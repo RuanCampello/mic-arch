@@ -80,6 +80,22 @@ impl Alu {
     }
 }
 
+impl std::fmt::Display for AluControl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let bit = |b: bool| if b { '1' } else { '0' };
+        write!(
+            f,
+            "{}{}{}{}{}{}",
+            bit(self.f0),
+            bit(self.f1),
+            bit(self.ena),
+            bit(self.enb),
+            bit(self.inva),
+            bit(self.inc)
+        )
+    }
+}
+
 impl From<u8> for AluControl {
     fn from(bits: u8) -> Self {
         Self {
