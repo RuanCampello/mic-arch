@@ -187,4 +187,36 @@ mod tests {
         // we should get the b again because a turns 0, not 69
         assert_eq!(res.s, 35);
     }
+
+    #[test]
+    fn complete_sum() {
+        let ctrl = AluControl {
+            f0: true,
+            f1: true,
+            ena: true,
+            enb: true,
+            inva: false,
+            inc: false,
+        };
+
+        let res = Alu::execute(34, 35, ctrl);
+        // now we should get the sum as expected
+        assert_eq!(res.s, 69);
+    }
+
+    #[test]
+    fn sum_with_disable_a_and_b() {
+        let ctrl = AluControl {
+            f0: true,
+            f1: true,
+            ena: false,
+            enb: false,
+            inva: false,
+            inc: false,
+        };
+
+        let res = Alu::execute(34, 35, ctrl);
+        // as both operands are not enabled, we should get a zeroed result :/
+        assert_eq!(res.s, 0);
+    }
 }
