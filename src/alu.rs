@@ -43,7 +43,7 @@ pub(crate) struct AluControl {
 }
 
 impl Alu {
-    pub fn execute(&self, a: u32, b: u32, control: AluControl) -> AluResult {
+    pub fn execute(a: u32, b: u32, control: AluControl) -> AluResult {
         // verify which inputs are enabled
         let mut a = if control.ena { a } else { 0 };
         let b = if control.enb { b } else { 0 };
@@ -90,5 +90,49 @@ impl From<u8> for AluControl {
             inva: bits & 0b000010 != 0,
             inc: bits & 0b000001 != 0,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn and_operation() {
+        let ctrl = AluControl {
+            f0: false,
+            f1: false,
+            ena: true,
+            enb: true,
+            inva: false,
+            inc: false,
+        };
+
+        let res = Alu::execute(0b1100, 0b1010, ctrl);
+
+        // A: 1101
+        // B: 1010
+        // &: 1000
+        assert_eq!(res.s, 0b1000);
+        assert!(!res.carry);
+    }
+
+    #[test]
+    fn or_operation() {
+        let ctrl = AluControl {
+            f0: true,
+            f1: false,
+            ena: true,
+            enb: true,
+            inva: false,
+            inc: false,
+        };
+
+        let res = Alu::execute(0b1100, 0b1010, ctrl);
+
+        // A: 1100
+        // B: 1010
+        // |: 1110
+        assert_eq!(res.s, 0b1110);
     }
 }
