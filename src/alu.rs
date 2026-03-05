@@ -152,4 +152,39 @@ mod tests {
         // !B: 11110000
         assert_eq!(res.s as u8, 0b11110000); // we need to make this a u8 cause of the left 1's :D
     }
+
+    #[test]
+    fn invert_a() {
+        let ctrl = AluControl {
+            f0: false,
+            f1: false,
+            ena: true,
+            enb: true,
+            inva: true,
+            inc: false,
+        };
+
+        //  A: 0000
+        //  B: 1010
+        // !A: 1111 (we need to invert it first, again :D)
+        //  &: 1010
+        let res = Alu::execute(0b0000, 0b1010, ctrl);
+        assert_eq!(res.s, 0b1010);
+    }
+
+    #[test]
+    fn disable_a() {
+        let ctrl = AluControl {
+            f0: true,
+            f1: true,
+            ena: false,
+            enb: true,
+            inva: false,
+            inc: false,
+        };
+
+        let res = Alu::execute(34, 35, ctrl);
+        // we should get the b again because a turns 0, not 69
+        assert_eq!(res.s, 35);
+    }
 }
