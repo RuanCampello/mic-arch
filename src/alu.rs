@@ -135,4 +135,21 @@ mod tests {
         // |: 1110
         assert_eq!(res.s, 0b1110);
     }
+
+    #[test]
+    fn not_b_operation() {
+        let ctrl = AluControl {
+            f0: false,
+            f1: true,
+            ena: false,
+            enb: true,
+            inva: false,
+            inc: false,
+        };
+
+        let res = Alu::execute(0, 0b00001111, ctrl);
+        // B: 00001111
+        // !B: 11110000
+        assert_eq!(res.s as u8, 0b11110000); // we need to make this a u8 cause of the left 1's :D
+    }
 }
