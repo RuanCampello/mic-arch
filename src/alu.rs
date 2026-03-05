@@ -1,0 +1,94 @@
+//! Arithmetic logic unit `mic-1` implementation.
+
+/// The arithmetic logic unit of `mic-1`.
+/// This performs arithmetic and logic (duh) operations on `A` and `B`
+/// according to the [control](self::AluControl) signals.
+///
+/// Although this keeps no state, we use for scope purposes.
+pub(crate) struct Alu;
+
+/// The `ALU` returns both the result and the carry (vai-um).
+pub(crate) struct AluResult {
+    s: u32,
+    carry: bool,
+}
+
+/// The `ALU` receives control instructions with the following 6-bit format:
+///
+/// | Bit | Signal | Description |
+/// |-----|--------|-------------|
+/// | 5   | F0     | selects ALU operation |
+/// | 4   | F1     | selects ALU operation |
+/// | 3   | ENA    | enables input `a`. if `0`, `a` is treated as `0`. |
+/// | 2   | ENB    | enables input `b`. if `0`, `b` is treated as `0`. |
+/// | 1   | INVA   | inverts input `a` before the ALU operation. |
+/// | 0   | INC    | forces carry-in = 1, effectively adding `+1` to the result. |
+///
+/// The `F0` and `F1` bits determine the core ALU operation:
+///
+/// | F1 | F0 | Operation |
+/// |----|----|-----------|
+/// | 0  | 0  | `A & B` (logic AND)  |
+/// | 0  | 1  | `A \| B` (logic OR) |
+/// | 1  | 0  | `!B` (logic NOT) |
+/// | 1  | 1  | `A + B` (arithmetic ADD)|
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct AluControl {
+    f0: bool,
+    f1: bool,
+    ena: bool,
+    enb: bool,
+    inva: bool,
+    inc: bool,
+}
+
+impl Alu {
+    pub fn execute(&self, a: u32, b: u32, control: AluControl) -> AluResult {
+        // verify which inputs are enabled
+        let mut a = if control.ena { a } else { 0 };
+        let b = if control.enb { b } else { 0 };
+
+        // verify if we need to invert A BEFORE the operation
+        if control.inva {
+            a = !a;
+        }
+
+        let mut carry = false;
+
+        // this follows the spec interpretation of bits for f1, f0.
+        let mut result = match (control.f1, control.f0) {
+            (false, false) => a & b,
+            (false, true) => a | b,
+            (true, false) => !b,
+            (true, true) => {
+                let (s, c) = a.overflowing_add(b);
+                carry = c;
+                s
+            }
+        };
+
+        // verify if we need to increment the result
+        // here we need to take a little care of inc it because it can overflow too
+        // in that case, we also need to flip the carry
+        if control.inc {
+            let (s, c) = result.overflowing_add(1);
+            result = s;
+            carry |= c;
+        }
+
+        AluResult { s: result, carry }
+    }
+}
+
+impl From<u8> for AluControl {
+    fn from(bits: u8) -> Self {
+        Self {
+            f0: bits & 0b100000 != 0,
+            f1: bits & 0b010000 != 0,
+            ena: bits & 0b001000 != 0,
+            enb: bits & 0b000100 != 0,
+            inva: bits & 0b000010 != 0,
+            inc: bits & 0b000001 != 0,
+        }
+    }
+}
