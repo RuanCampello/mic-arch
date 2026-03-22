@@ -33,7 +33,7 @@ pub(crate) struct AluResult {
 /// | 1  | 0  | `!B` (logic NOT) |
 /// | 1  | 1  | `A + B` (arithmetic ADD)|
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) struct AluControl {
+pub(crate) struct AluInstruction {
     f0: bool,
     f1: bool,
     ena: bool,
@@ -43,7 +43,7 @@ pub(crate) struct AluControl {
 }
 
 impl Alu {
-    pub fn execute(a: u32, b: u32, control: AluControl) -> AluResult {
+    pub const fn execute(a: u32, b: u32, control: AluInstruction) -> AluResult {
         // verify which inputs are enabled
         let mut a = if control.ena { a } else { 0 };
         let b = if control.enb { b } else { 0 };
@@ -80,7 +80,7 @@ impl Alu {
     }
 }
 
-impl std::fmt::Display for AluControl {
+impl std::fmt::Display for AluInstruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let bit = |b: bool| if b { '1' } else { '0' };
         write!(
@@ -96,7 +96,7 @@ impl std::fmt::Display for AluControl {
     }
 }
 
-impl From<u8> for AluControl {
+impl From<u8> for AluInstruction {
     fn from(bits: u8) -> Self {
         Self {
             f0: bits & 0b100000 != 0,
@@ -115,7 +115,7 @@ mod tests {
 
     #[test]
     fn and_operation() {
-        let ctrl = AluControl {
+        let ctrl = AluInstruction {
             f0: false,
             f1: false,
             ena: true,
@@ -135,7 +135,7 @@ mod tests {
 
     #[test]
     fn or_operation() {
-        let ctrl = AluControl {
+        let ctrl = AluInstruction {
             f0: true,
             f1: false,
             ena: true,
@@ -154,7 +154,7 @@ mod tests {
 
     #[test]
     fn not_b_operation() {
-        let ctrl = AluControl {
+        let ctrl = AluInstruction {
             f0: false,
             f1: true,
             ena: false,
@@ -171,7 +171,7 @@ mod tests {
 
     #[test]
     fn invert_a() {
-        let ctrl = AluControl {
+        let ctrl = AluInstruction {
             f0: false,
             f1: false,
             ena: true,
@@ -190,7 +190,7 @@ mod tests {
 
     #[test]
     fn disable_a() {
-        let ctrl = AluControl {
+        let ctrl = AluInstruction {
             f0: true,
             f1: true,
             ena: false,
@@ -206,7 +206,7 @@ mod tests {
 
     #[test]
     fn complete_sum() {
-        let ctrl = AluControl {
+        let ctrl = AluInstruction {
             f0: true,
             f1: true,
             ena: true,
@@ -222,7 +222,7 @@ mod tests {
 
     #[test]
     fn sum_with_disable_a_and_b() {
-        let ctrl = AluControl {
+        let ctrl = AluInstruction {
             f0: true,
             f1: true,
             ena: false,
@@ -236,8 +236,3 @@ mod tests {
         assert_eq!(res.s, 0);
     }
 }
-
-
-
-
-
