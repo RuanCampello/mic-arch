@@ -32,7 +32,7 @@ pub(crate) struct AluResult {
 /// | 0  | 1  | `A \| B` (logic OR) |
 /// | 1  | 0  | `!B` (logic NOT) |
 /// | 1  | 1  | `A + B` (arithmetic ADD)|
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct AluInstruction {
     f0: bool,
     f1: bool,
@@ -106,6 +106,27 @@ impl From<u8> for AluInstruction {
             inva: bits & 0b000010 != 0,
             inc: bits & 0b000001 != 0,
         }
+    }
+}
+
+impl std::str::FromStr for AluInstruction {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Here validating binary input
+        let s = s.trim();
+        if s.len() != 6 {
+            return Err(format!("[ERROR] => Expected exactly 6 bits, got {} characters >:(", s.len()));
+        }
+        if !s.chars().all(|c| c == '0' || c == '1') {
+            return Err("[ERROR] => Expected just binary digits :(".into());
+        }
+
+        // Converting:
+        // FROM: string of 6 bits
+        // TO: u8
+        let bits = u8::from_str_radix(s, 2).map_err(|e| e.to_string())?;
+        Ok(Self::from(bits))
     }
 }
 
@@ -234,5 +255,38 @@ mod tests {
         let res = Alu::execute(34, 35, ctrl);
         // as both operands are not enabled, we should get a zeroed result :/
         assert_eq!(res.s, 0);
+    }
+
+    #[test]
+    fn from_str_parses_six_bits() {
+        let parsed: AluInstruction = "111110".parse().unwrap();
+        let expected = AluInstruction::from(0b111110);
+        assert_eq!(parsed, expected);
+    }
+
+    #[test]
+    fn from_str_round_trips_display() {
+        let ctrl = AluInstruction {
+            f0: false,
+            f1: true,
+            ena: true,
+            enb: true,
+            inva: false,
+            inc: false,
+        };
+        let s = ctrl.to_string();
+        let parsed: AluInstruction = s.parse().unwrap();
+        assert_eq!(parsed, ctrl);
+    }
+
+    #[test]
+    fn from_str_rejects_wrong_length() {
+        assert!("11111".parse::<AluInstruction>().is_err());
+        assert!("1111111".parse::<AluInstruction>().is_err());
+    }
+
+    #[test]
+    fn from_str_rejects_invalid_digits() {
+        assert!("11111a".parse::<AluInstruction>().is_err());
     }
 }
