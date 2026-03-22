@@ -42,6 +42,13 @@ pub(crate) struct AluInstruction {
     inc: bool,
 }
 
+#[derive(Debug, PartialEq)]
+pub(crate) enum AluParseError {
+    InvalidLength(usize),
+    NonBinaryChar,
+    IntParse(std::num::ParseIntError),
+}
+
 impl Alu {
     pub const fn execute(a: u32, b: u32, control: AluInstruction) -> AluResult {
         // verify which inputs are enabled
@@ -110,29 +117,48 @@ impl From<u8> for AluInstruction {
 }
 
 impl std::str::FromStr for AluInstruction {
-    type Err = String;
+    type Err = AluParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         // Here validating binary input
         let s = s.trim();
         if s.len() != 6 {
-            return Err(format!("[ERROR] => Expected exactly 6 bits, got {} characters >:(", s.len()));
+            return Err(AluParseError::InvalidLength(s.len()));
         }
         if !s.chars().all(|c| c == '0' || c == '1') {
-            return Err("[ERROR] => Expected just binary digits :(".into());
+            return Err(AluParseError::NonBinaryChar);
         }
 
         // Converting:
         // FROM: string of 6 bits
         // TO: u8
-        let bits = u8::from_str_radix(s, 2).map_err(|e| e.to_string())?;
+        let bits = u8::from_str_radix(s, 2)?;
         Ok(Self::from(bits))
+    }
+}
+
+impl std::fmt::Display for AluParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidLength(length) => {
+                writeln!(f, "expected exactly 6 bits, but found: {length} >:(")
+            }
+            Self::NonBinaryChar => writeln!(f, "expected only binary digits :("),
+            Self::IntParse(parse) => writeln!(f, "{parse}"),
+        }
+    }
+}
+
+impl From<std::num::ParseIntError> for AluParseError {
+    fn from(value: std::num::ParseIntError) -> Self {
+        Self::IntParse(value)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::num::ParseIntError;
 
     #[test]
     fn and_operation() {
@@ -281,12 +307,25 @@ mod tests {
 
     #[test]
     fn from_str_rejects_wrong_length() {
-        assert!("11111".parse::<AluInstruction>().is_err());
-        assert!("1111111".parse::<AluInstruction>().is_err());
+        assert_eq!(
+            "11111".parse::<AluInstruction>().unwrap_err(),
+            AluParseError::InvalidLength(5)
+        );
+        assert_eq!(
+            "1111111".parse::<AluInstruction>().unwrap_err(),
+            AluParseError::InvalidLength(7)
+        );
     }
 
     #[test]
     fn from_str_rejects_invalid_digits() {
-        assert!("11111a".parse::<AluInstruction>().is_err());
+        assert_eq!(
+            "11111a".parse::<AluInstruction>().unwrap_err(),
+            AluParseError::NonBinaryChar
+        );
+        assert_eq!(
+            "1111.1".parse::<AluInstruction>().unwrap_err(),
+            AluParseError::NonBinaryChar
+        );
     }
 }
