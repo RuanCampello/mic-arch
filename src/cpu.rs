@@ -14,15 +14,15 @@ pub struct Cpu {
 /// That's all the information we need to be logged.
 pub struct ExecutionLog {
     /// 6-bit instruction
-    ir: u8,
+    pub ir: AluInstruction,
     /// program counter
-    pc: usize,
-    /// `Alu` input A
-    a: u32,
-    /// `Alu` input A
-    b: u32,
+    pub pc: usize,
+    /// `Alu` input A effectively used by the ALU
+    pub a: u32,
+    /// `Alu` input B effectively used by the ALU
+    pub b: u32,
     /// `Alu` output
-    result: AluResult,
+    pub result: AluResult,
 }
 
 impl Cpu {
@@ -37,14 +37,23 @@ impl Cpu {
     #[inline]
     /// Executes one instruction cycle.
     /// Returns the execution log for output handling.
-    pub fn execute_cycle(&mut self, a: u32, b: u32, instruction: u8) -> ExecutionLog {
+    pub fn execute_cycle(
+        &mut self,
+        a: u32,
+        b: u32,
+        instruction: AluInstruction,
+    ) -> ExecutionLog {
         // loads the instruction into IR
-        let alu_instruction = AluInstruction::from(instruction);
-        self.ir.load(alu_instruction);
+        self.ir.load(instruction);
 
         // we need to get the current pc BEFORE the incrementing
         let pc = self.pc.get();
-        let result = Alu::execute(a, b, alu_instruction);
+
+        let result = Alu::execute(a, b, instruction);
+
+        // values actually considered by the ALU after enable signals
+        let logged_a = if instruction.ena() { a } else { 0 };
+        let logged_b = if instruction.enb() { b } else { 0 };
 
         // increments the pc for the next instruction :D
         self.pc.increment();
@@ -52,8 +61,8 @@ impl Cpu {
         ExecutionLog {
             ir: instruction,
             pc,
-            a,
-            b,
+            a: logged_a,
+            b: logged_b,
             result,
         }
     }

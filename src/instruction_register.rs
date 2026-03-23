@@ -13,7 +13,7 @@ pub struct InstructionRegister {
 impl ProgramCounter {
     // cria um novo Program Counter iniciando em 0
     pub fn new() -> Self {
-        ProgramCounter { value: 0 }
+        ProgramCounter { value: 1 }
     }
 
     // retorna o valor atual do contador

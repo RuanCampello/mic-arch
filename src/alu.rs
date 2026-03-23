@@ -8,17 +8,28 @@
 pub(crate) struct Alu;
 
 /// The `ALU` returns both the result and the carry (vai-um).
+#[derive(Debug)]
 pub(crate) struct AluResult {
     s: u32,
     carry: bool,
+}
+
+impl AluResult {
+    pub const fn s(&self) -> u32 {
+        self.s
+    }
+
+    pub const fn carry(&self) -> bool {
+        self.carry
+    }
 }
 
 /// The `ALU` receives control instructions with the following 6-bit format:
 ///
 /// | Bit | Signal | Description |
 /// |-----|--------|-------------|
-/// | 5   | F0     | selects ALU operation |
-/// | 4   | F1     | selects ALU operation |
+/// | 5   | F1     | selects ALU operation |
+/// | 4   | F0     | selects ALU operation |
 /// | 3   | ENA    | enables input `a`. if `0`, `a` is treated as `0`. |
 /// | 2   | ENB    | enables input `b`. if `0`, `b` is treated as `0`. |
 /// | 1   | INVA   | inverts input `a` before the ALU operation. |
@@ -40,6 +51,32 @@ pub(crate) struct AluInstruction {
     enb: bool,
     inva: bool,
     inc: bool,
+}
+
+impl AluInstruction {
+    pub const fn ena(&self) -> bool {
+        self.ena
+    }
+
+    pub const fn enb(&self) -> bool {
+        self.enb
+    }
+
+    pub const fn inva(&self) -> bool {
+        self.inva
+    }
+
+    pub const fn inc(&self) -> bool {
+        self.inc
+    }
+
+    pub const fn f0(&self) -> bool {
+        self.f0
+    }
+
+    pub const fn f1(&self) -> bool {
+        self.f1
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -93,8 +130,8 @@ impl std::fmt::Display for AluInstruction {
         write!(
             f,
             "{}{}{}{}{}{}",
-            bit(self.f0),
             bit(self.f1),
+            bit(self.f0),
             bit(self.ena),
             bit(self.enb),
             bit(self.inva),
@@ -106,8 +143,8 @@ impl std::fmt::Display for AluInstruction {
 impl From<u8> for AluInstruction {
     fn from(bits: u8) -> Self {
         Self {
-            f0: bits & 0b100000 != 0,
-            f1: bits & 0b010000 != 0,
+            f0: bits & 0b010000 != 0,
+            f1: bits & 0b100000 != 0,
             ena: bits & 0b001000 != 0,
             enb: bits & 0b000100 != 0,
             inva: bits & 0b000010 != 0,
