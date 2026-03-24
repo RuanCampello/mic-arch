@@ -1,5 +1,5 @@
 use crate::{
-    alu::{Alu, AluInstruction, AluResult},
+    alu::{Alu, AluInstruction, AluResult, Inputs},
     instruction_register::{InstructionRegister, ProgramCounter},
 };
 
@@ -17,12 +17,33 @@ pub struct ExecutionLog {
     pub ir: AluInstruction,
     /// program counter
     pub pc: usize,
-    /// `Alu` input A effectively used by the ALU
+    /// `Alu` input A
     pub a: u32,
-    /// `Alu` input B effectively used by the ALU
+    /// `Alu` input A
     pub b: u32,
     /// `Alu` output
     pub result: AluResult,
+    pub used_inputs: Inputs,
+}
+
+impl ExecutionLog {
+    /// Creates a new `ExecutionLog`. Useful in tests.
+    pub fn new(
+        ir: AluInstruction,
+        pc: usize,
+        a: u32,
+        b: u32,
+        result: AluResult,
+    ) -> Self {
+        Self {
+            ir,
+            pc,
+            a,
+            b,
+            result,
+            used_inputs: Inputs {a, b},
+        }
+    }
 }
 
 impl Cpu {
@@ -37,23 +58,12 @@ impl Cpu {
     #[inline]
     /// Executes one instruction cycle.
     /// Returns the execution log for output handling.
-    pub fn execute_cycle(
-        &mut self,
-        a: u32,
-        b: u32,
-        instruction: AluInstruction,
-    ) -> ExecutionLog {
-        // loads the instruction into IR
+    pub fn execute_cycle(&mut self, a: u32, b: u32, instruction: AluInstruction) -> ExecutionLog {
         self.ir.load(instruction);
 
         // we need to get the current pc BEFORE the incrementing
         let pc = self.pc.get();
-
-        let result = Alu::execute(a, b, instruction);
-
-        // values actually considered by the ALU after enable signals
-        let logged_a = if instruction.ena() { a } else { 0 };
-        let logged_b = if instruction.enb() { b } else { 0 };
+        let (used_inputs, result) = Alu::execute(a, b, instruction);
 
         // increments the pc for the next instruction :D
         self.pc.increment();
@@ -61,9 +71,10 @@ impl Cpu {
         ExecutionLog {
             ir: instruction,
             pc,
-            a: logged_a,
-            b: logged_b,
+            a,
+            b,
             result,
+            used_inputs,
         }
     }
 }

@@ -15,6 +15,10 @@ pub(crate) struct AluResult {
 }
 
 impl AluResult {
+    pub fn new(s: u32, carry: bool) -> Self {
+        Self { s, carry }
+    }
+
     pub const fn s(&self) -> u32 {
         self.s
     }
@@ -86,8 +90,14 @@ pub(crate) enum AluParseError {
     IntParse(std::num::ParseIntError),
 }
 
+/// Respectively 'a' and 'b' used during ALU calculation.
+pub struct Inputs {
+    pub a: u32,
+    pub b: u32,
+}
+
 impl Alu {
-    pub const fn execute(a: u32, b: u32, control: AluInstruction) -> AluResult {
+    pub const fn execute(a: u32, b: u32, control: AluInstruction) -> (Inputs, AluResult) {
         // verify which inputs are enabled
         let mut a = if control.ena { a } else { 0 };
         let b = if control.enb { b } else { 0 };
@@ -120,7 +130,7 @@ impl Alu {
             carry |= c;
         }
 
-        AluResult { s: result, carry }
+        (Inputs { a, b }, AluResult { s: result, carry })
     }
 }
 
@@ -207,7 +217,7 @@ mod tests {
             inc: false,
         };
 
-        let res = Alu::execute(0b1100, 0b1010, ctrl);
+        let (_, res) = Alu::execute(0b1100, 0b1010, ctrl);
 
         // A: 1100
         // B: 1010
@@ -227,7 +237,7 @@ mod tests {
             inc: false,
         };
 
-        let res = Alu::execute(0b1100, 0b1010, ctrl);
+        let (_, res) = Alu::execute(0b1100, 0b1010, ctrl);
 
         // A: 1100
         // B: 1010
@@ -246,7 +256,7 @@ mod tests {
             inc: false,
         };
 
-        let res = Alu::execute(0, 0b00001111, ctrl);
+        let (_, res) = Alu::execute(0, 0b00001111, ctrl);
         // B: 00001111
         // !B: 11110000
         assert_eq!(res.s as u8, 0b11110000); // we need to make this a u8 cause of the left 1's :D
@@ -267,7 +277,7 @@ mod tests {
         //  B: 1010
         // !A: 1111 (we need to invert it first, again :D)
         //  &: 1010
-        let res = Alu::execute(0b0000, 0b1010, ctrl);
+        let (_, res) = Alu::execute(0b0000, 0b1010, ctrl);
         assert_eq!(res.s, 0b1010);
     }
 
@@ -282,7 +292,7 @@ mod tests {
             inc: false,
         };
 
-        let res = Alu::execute(34, 35, ctrl);
+        let (_, res) = Alu::execute(34, 35, ctrl);
         // we should get the b again because a turns 0, not 69
         assert_eq!(res.s, 35);
     }
@@ -298,7 +308,7 @@ mod tests {
             inc: false,
         };
 
-        let res = Alu::execute(34, 35, ctrl);
+        let (_, res) = Alu::execute(34, 35, ctrl);
         // now we should get the sum as expected
         assert_eq!(res.s, 69);
     }
@@ -314,7 +324,7 @@ mod tests {
             inc: false,
         };
 
-        let res = Alu::execute(34, 35, ctrl);
+        let (_, res) = Alu::execute(34, 35, ctrl);
         // as both operands are not enabled, we should get a zeroed result :/
         assert_eq!(res.s, 0);
     }
