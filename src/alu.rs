@@ -28,8 +28,8 @@ impl AluResult {
 ///
 /// | Bit | Signal | Description |
 /// |-----|--------|-------------|
-/// | 5   | F1     | selects ALU operation |
-/// | 4   | F0     | selects ALU operation |
+/// | 5   | F0     | selects ALU operation |
+/// | 4   | F1     | selects ALU operation |
 /// | 3   | ENA    | enables input `a`. if `0`, `a` is treated as `0`. |
 /// | 2   | ENB    | enables input `b`. if `0`, `b` is treated as `0`. |
 /// | 1   | INVA   | inverts input `a` before the ALU operation. |
@@ -37,12 +37,12 @@ impl AluResult {
 ///
 /// The `F0` and `F1` bits determine the core ALU operation:
 ///
-/// | F1 | F0 | Operation |
+/// | F0 | F1 | Operation |
 /// |----|----|-----------|
-/// | 0  | 0  | `A & B` (logic AND)  |
+/// | 0  | 0  | `A & B` (logic AND) |
 /// | 0  | 1  | `A \| B` (logic OR) |
 /// | 1  | 0  | `!B` (logic NOT) |
-/// | 1  | 1  | `A + B` (arithmetic ADD)|
+/// | 1  | 1  | `A + B` (arithmetic ADD) |
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct AluInstruction {
     f0: bool,
@@ -99,8 +99,8 @@ impl Alu {
 
         let mut carry = false;
 
-        // this follows the spec interpretation of bits for f1, f0.
-        let mut result = match (control.f1, control.f0) {
+        // this follows the specification interpretation of bits for f0, f1.
+        let mut result = match (control.f0, control.f1) {
             (false, false) => a & b,
             (false, true) => a | b,
             (true, false) => !b,
@@ -112,7 +112,7 @@ impl Alu {
         };
 
         // verify if we need to increment the result
-        // here we need to take a little care of inc it because it can overflow too
+        // here we need to take a little care of inc because it can overflow too
         // in that case, we also need to flip the carry
         if control.inc {
             let (s, c) = result.overflowing_add(1);
@@ -130,8 +130,8 @@ impl std::fmt::Display for AluInstruction {
         write!(
             f,
             "{}{}{}{}{}{}",
-            bit(self.f1),
             bit(self.f0),
+            bit(self.f1),
             bit(self.ena),
             bit(self.enb),
             bit(self.inva),
@@ -143,8 +143,8 @@ impl std::fmt::Display for AluInstruction {
 impl From<u8> for AluInstruction {
     fn from(bits: u8) -> Self {
         Self {
-            f0: bits & 0b010000 != 0,
-            f1: bits & 0b100000 != 0,
+            f0: bits & 0b100000 != 0,
+            f1: bits & 0b010000 != 0,
             ena: bits & 0b001000 != 0,
             enb: bits & 0b000100 != 0,
             inva: bits & 0b000010 != 0,
@@ -195,7 +195,6 @@ impl From<std::num::ParseIntError> for AluParseError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::num::ParseIntError;
 
     #[test]
     fn and_operation() {
@@ -210,7 +209,7 @@ mod tests {
 
         let res = Alu::execute(0b1100, 0b1010, ctrl);
 
-        // A: 1101
+        // A: 1100
         // B: 1010
         // &: 1000
         assert_eq!(res.s, 0b1000);
@@ -220,8 +219,8 @@ mod tests {
     #[test]
     fn or_operation() {
         let ctrl = AluInstruction {
-            f0: true,
-            f1: false,
+            f0: false,
+            f1: true,
             ena: true,
             enb: true,
             inva: false,
@@ -239,8 +238,8 @@ mod tests {
     #[test]
     fn not_b_operation() {
         let ctrl = AluInstruction {
-            f0: false,
-            f1: true,
+            f0: true,
+            f1: false,
             ena: false,
             enb: true,
             inva: false,
@@ -330,8 +329,8 @@ mod tests {
     #[test]
     fn from_str_round_trips_display() {
         let ctrl = AluInstruction {
-            f0: false,
-            f1: true,
+            f0: true,
+            f1: false,
             ena: true,
             enb: true,
             inva: false,
