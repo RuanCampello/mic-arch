@@ -8,9 +8,24 @@
 pub(crate) struct Alu;
 
 /// The `ALU` returns both the result and the carry (vai-um).
+#[derive(Debug)]
 pub(crate) struct AluResult {
     s: u32,
     carry: bool,
+}
+
+impl AluResult {
+    pub fn new(s: u32, carry: bool) -> Self {
+        Self { s, carry }
+    }
+
+    pub const fn s(&self) -> u32 {
+        self.s
+    }
+
+    pub const fn carry(&self) -> bool {
+        self.carry
+    }
 }
 
 /// The `ALU` receives control instructions with the following 6-bit format:
@@ -26,12 +41,12 @@ pub(crate) struct AluResult {
 ///
 /// The `F0` and `F1` bits determine the core ALU operation:
 ///
-/// | F1 | F0 | Operation |
+/// | F0 | F1 | Operation |
 /// |----|----|-----------|
-/// | 0  | 0  | `A & B` (logic AND)  |
+/// | 0  | 0  | `A & B` (logic AND) |
 /// | 0  | 1  | `A \| B` (logic OR) |
 /// | 1  | 0  | `!B` (logic NOT) |
-/// | 1  | 1  | `A + B` (arithmetic ADD)|
+/// | 1  | 1  | `A + B` (arithmetic ADD) |
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct AluInstruction {
     f0: bool,
@@ -42,6 +57,32 @@ pub(crate) struct AluInstruction {
     inc: bool,
 }
 
+impl AluInstruction {
+    pub const fn ena(&self) -> bool {
+        self.ena
+    }
+
+    pub const fn enb(&self) -> bool {
+        self.enb
+    }
+
+    pub const fn inva(&self) -> bool {
+        self.inva
+    }
+
+    pub const fn inc(&self) -> bool {
+        self.inc
+    }
+
+    pub const fn f0(&self) -> bool {
+        self.f0
+    }
+
+    pub const fn f1(&self) -> bool {
+        self.f1
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub(crate) enum AluParseError {
     InvalidLength(usize),
@@ -49,8 +90,14 @@ pub(crate) enum AluParseError {
     IntParse(std::num::ParseIntError),
 }
 
+/// Respectively 'a' and 'b' used during ALU calculation.
+pub struct Inputs {
+    pub a: u32,
+    pub b: u32,
+}
+
 impl Alu {
-    pub const fn execute(a: u32, b: u32, control: AluInstruction) -> AluResult {
+    pub const fn execute(a: u32, b: u32, control: AluInstruction) -> (Inputs, AluResult) {
         // verify which inputs are enabled
         let mut a = if control.ena { a } else { 0 };
         let b = if control.enb { b } else { 0 };
@@ -62,8 +109,8 @@ impl Alu {
 
         let mut carry = false;
 
-        // this follows the spec interpretation of bits for f1, f0.
-        let mut result = match (control.f1, control.f0) {
+        // this follows the specification interpretation of bits for f0, f1.
+        let mut result = match (control.f0, control.f1) {
             (false, false) => a & b,
             (false, true) => a | b,
             (true, false) => !b,
@@ -75,7 +122,7 @@ impl Alu {
         };
 
         // verify if we need to increment the result
-        // here we need to take a little care of inc it because it can overflow too
+        // here we need to take a little care of inc because it can overflow too
         // in that case, we also need to flip the carry
         if control.inc {
             let (s, c) = result.overflowing_add(1);
@@ -83,7 +130,7 @@ impl Alu {
             carry |= c;
         }
 
-        AluResult { s: result, carry }
+        (Inputs { a, b }, AluResult { s: result, carry })
     }
 }
 
@@ -158,7 +205,6 @@ impl From<std::num::ParseIntError> for AluParseError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::num::ParseIntError;
 
     #[test]
     fn and_operation() {
@@ -171,9 +217,9 @@ mod tests {
             inc: false,
         };
 
-        let res = Alu::execute(0b1100, 0b1010, ctrl);
+        let (_, res) = Alu::execute(0b1100, 0b1010, ctrl);
 
-        // A: 1101
+        // A: 1100
         // B: 1010
         // &: 1000
         assert_eq!(res.s, 0b1000);
@@ -183,15 +229,15 @@ mod tests {
     #[test]
     fn or_operation() {
         let ctrl = AluInstruction {
-            f0: true,
-            f1: false,
+            f0: false,
+            f1: true,
             ena: true,
             enb: true,
             inva: false,
             inc: false,
         };
 
-        let res = Alu::execute(0b1100, 0b1010, ctrl);
+        let (_, res) = Alu::execute(0b1100, 0b1010, ctrl);
 
         // A: 1100
         // B: 1010
@@ -202,15 +248,15 @@ mod tests {
     #[test]
     fn not_b_operation() {
         let ctrl = AluInstruction {
-            f0: false,
-            f1: true,
+            f0: true,
+            f1: false,
             ena: false,
             enb: true,
             inva: false,
             inc: false,
         };
 
-        let res = Alu::execute(0, 0b00001111, ctrl);
+        let (_, res) = Alu::execute(0, 0b00001111, ctrl);
         // B: 00001111
         // !B: 11110000
         assert_eq!(res.s as u8, 0b11110000); // we need to make this a u8 cause of the left 1's :D
@@ -231,7 +277,7 @@ mod tests {
         //  B: 1010
         // !A: 1111 (we need to invert it first, again :D)
         //  &: 1010
-        let res = Alu::execute(0b0000, 0b1010, ctrl);
+        let (_, res) = Alu::execute(0b0000, 0b1010, ctrl);
         assert_eq!(res.s, 0b1010);
     }
 
@@ -246,7 +292,7 @@ mod tests {
             inc: false,
         };
 
-        let res = Alu::execute(34, 35, ctrl);
+        let (_, res) = Alu::execute(34, 35, ctrl);
         // we should get the b again because a turns 0, not 69
         assert_eq!(res.s, 35);
     }
@@ -262,7 +308,7 @@ mod tests {
             inc: false,
         };
 
-        let res = Alu::execute(34, 35, ctrl);
+        let (_, res) = Alu::execute(34, 35, ctrl);
         // now we should get the sum as expected
         assert_eq!(res.s, 69);
     }
@@ -278,7 +324,7 @@ mod tests {
             inc: false,
         };
 
-        let res = Alu::execute(34, 35, ctrl);
+        let (_, res) = Alu::execute(34, 35, ctrl);
         // as both operands are not enabled, we should get a zeroed result :/
         assert_eq!(res.s, 0);
     }
@@ -293,8 +339,8 @@ mod tests {
     #[test]
     fn from_str_round_trips_display() {
         let ctrl = AluInstruction {
-            f0: false,
-            f1: true,
+            f0: true,
+            f1: false,
             ena: true,
             enb: true,
             inva: false,

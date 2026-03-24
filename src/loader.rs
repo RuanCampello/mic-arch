@@ -13,6 +13,20 @@ impl From<std::io::Error> for LoaderError {
     }
 }
 
+impl std::error::Error for LoaderError {}
+
+impl std::fmt::Display for LoaderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LoaderError::Line { line, message } => write!(
+                f,
+                "Failed to load program due to Alu parsing error on {line}: {message}"
+            ),
+            LoaderError::Io(io) => writeln!(f, "Failed to load program due to IO error: {io}"),
+        }
+    }
+}
+
 /// Reads a text file of one 6-bit ALU control word per line.
 /// Blank lines (including a trailing empty line after the last instruction) are skipped.
 pub(crate) fn load_program(path: &str) -> Result<Vec<AluInstruction>, LoaderError> {
