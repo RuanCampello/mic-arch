@@ -47,11 +47,18 @@ impl<W: Write> Logger<W> {
 
     /// Escreve a finalização do programa.
     pub fn end_program(&mut self, cycle: usize) -> Result<()> {
-        // Cycle 5
-        // PC = 5
-        // > Line is empty, EOP.
-        writeln!(self.writer, "EOP")?;
-        writeln!(self.writer, "Programa encerrado no ciclo {}", cycle)?;
+        writeln!(
+            self.writer,
+            "============================================================"
+        )?;
+        writeln!(self.writer, "Cycle {cycle}")?;
+        writeln!(self.writer)?;
+        writeln!(self.writer, "PC = {cycle}")?;
+        writeln!(self.writer, "> Line is empty, EOP.")?;
+        writeln!(self.writer)?;
+
+        self.writer.flush()?;
+
         Ok(())
     }
 }

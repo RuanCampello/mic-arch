@@ -7,8 +7,10 @@ fn test_against_given_output() -> Result<(), Box<dyn std::error::Error>> {
     let a: u32 = 0b11111111111111111111111111111111;
 
     let path = Path::new("./tests/data/programa_etapa1.txt");
+    let output = Path::new("./tests/data/saida_etapa1_output.txt");
     let expected_path = Path::new("./tests/data/saída_etapa1.txt");
-    let file = File::create(&path)?;
+
+    let file = File::create(&output)?;
 
     let mut cpu = Cpu::new();
     let mut logger = Logger::new(BufWriter::new(file));
@@ -22,10 +24,11 @@ fn test_against_given_output() -> Result<(), Box<dyn std::error::Error>> {
 
     logger.end_program(program.len() + 1)?;
 
-    let output = std::fs::read_to_string(&path)?;
+    let output = std::fs::read_to_string(&output)?;
     let expected_output = std::fs::read_to_string(&expected_path)?;
 
     assert_eq!(output, expected_output, "both outputs should be equal");
+    assert_eq!(output.len(), expected_output.len());
 
     Ok(())
 }
