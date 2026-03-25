@@ -9,23 +9,9 @@ pub(crate) struct Alu;
 
 /// The `ALU` returns both the result and the carry (vai-um).
 #[derive(Debug)]
-pub(crate) struct AluResult {
-    s: u32,
-    carry: bool,
-}
-
-impl AluResult {
-    pub fn new(s: u32, carry: bool) -> Self {
-        Self { s, carry }
-    }
-
-    pub const fn s(&self) -> u32 {
-        self.s
-    }
-
-    pub const fn carry(&self) -> bool {
-        self.carry
-    }
+pub struct AluResult {
+    pub s: u32,
+    pub carry: bool,
 }
 
 /// The `ALU` receives control instructions with the following 6-bit format:
@@ -48,7 +34,7 @@ impl AluResult {
 /// | 1  | 0  | `!B` (logic NOT) |
 /// | 1  | 1  | `A + B` (arithmetic ADD) |
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) struct AluInstruction {
+pub struct AluInstruction {
     f0: bool,
     f1: bool,
     ena: bool,
@@ -57,34 +43,8 @@ pub(crate) struct AluInstruction {
     inc: bool,
 }
 
-impl AluInstruction {
-    pub const fn ena(&self) -> bool {
-        self.ena
-    }
-
-    pub const fn enb(&self) -> bool {
-        self.enb
-    }
-
-    pub const fn inva(&self) -> bool {
-        self.inva
-    }
-
-    pub const fn inc(&self) -> bool {
-        self.inc
-    }
-
-    pub const fn f0(&self) -> bool {
-        self.f0
-    }
-
-    pub const fn f1(&self) -> bool {
-        self.f1
-    }
-}
-
 #[derive(Debug, PartialEq)]
-pub(crate) enum AluParseError {
+pub enum AluParseError {
     InvalidLength(usize),
     NonBinaryChar,
     IntParse(std::num::ParseIntError),

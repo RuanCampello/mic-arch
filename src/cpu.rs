@@ -7,7 +7,6 @@ use crate::{
 pub struct Cpu {
     pc: ProgramCounter,
     ir: InstructionRegister,
-    alu: Alu,
 }
 
 /// The result of each executed program line.
@@ -17,10 +16,6 @@ pub struct ExecutionLog {
     pub ir: AluInstruction,
     /// program counter
     pub pc: usize,
-    /// `Alu` input A
-    pub a: u32,
-    /// `Alu` input A
-    pub b: u32,
     /// `Alu` output
     pub result: AluResult,
     pub used_inputs: Inputs,
@@ -28,20 +23,12 @@ pub struct ExecutionLog {
 
 impl ExecutionLog {
     /// Creates a new `ExecutionLog`. Useful in tests.
-    pub fn new(
-        ir: AluInstruction,
-        pc: usize,
-        a: u32,
-        b: u32,
-        result: AluResult,
-    ) -> Self {
+    pub fn new(ir: AluInstruction, pc: usize, a: u32, b: u32, result: AluResult) -> Self {
         Self {
             ir,
             pc,
-            a,
-            b,
             result,
-            used_inputs: Inputs {a, b},
+            used_inputs: Inputs { a, b },
         }
     }
 }
@@ -51,7 +38,6 @@ impl Cpu {
         Cpu {
             pc: ProgramCounter::new(),
             ir: InstructionRegister::new(),
-            alu: Alu,
         }
     }
 
@@ -71,8 +57,6 @@ impl Cpu {
         ExecutionLog {
             ir: instruction,
             pc,
-            a,
-            b,
             result,
             used_inputs,
         }

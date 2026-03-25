@@ -1,8 +1,8 @@
 use crate::alu::{AluInstruction, AluParseError};
-use std::str::FromStr;
+use std::{path::Path, str::FromStr};
 
 #[derive(Debug)]
-pub(crate) enum LoaderError {
+pub enum LoaderError {
     Io(std::io::Error),
     Line { line: usize, message: AluParseError },
 }
@@ -29,8 +29,8 @@ impl std::fmt::Display for LoaderError {
 
 /// Reads a text file of one 6-bit ALU control word per line.
 /// Blank lines (including a trailing empty line after the last instruction) are skipped.
-pub(crate) fn load_program(path: &str) -> Result<Vec<AluInstruction>, LoaderError> {
-    let contents = std::fs::read_to_string(path)?;
+pub fn load_program(path: impl AsRef<Path>) -> Result<Vec<AluInstruction>, LoaderError> {
+    let contents = std::fs::read_to_string(path.as_ref())?;
     let mut program = Vec::new();
 
     for (idx, raw_line) in contents.lines().enumerate() {
