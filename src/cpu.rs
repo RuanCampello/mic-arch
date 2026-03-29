@@ -12,7 +12,7 @@ pub struct Cpu {
 /// The result of each executed program line.
 /// That's all the information we need to be logged.
 pub struct ExecutionLog {
-    /// 6-bit instruction
+    /// 8-bit instruction (`Display` / program lines may use 6 legacy bits)
     pub ir: AluInstruction,
     /// program counter
     pub pc: usize,

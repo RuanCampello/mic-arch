@@ -29,7 +29,11 @@ mod tests {
         let program = load_program(&input)?;
         for (cycle, &instruction) in program.iter().enumerate() {
             let result = cpu.execute_cycle(a, b, instruction);
-            logger.log_cycle(cycle + 1, &result)?;
+            if instruction.is_valid() {
+                logger.log_cycle(cycle + 1, &result)?;
+            } else {
+                logger.log_cycle_invalid_signals(cycle + 1, &result)?;
+            }
         }
 
         logger.end_program(program.len() + 1)?;

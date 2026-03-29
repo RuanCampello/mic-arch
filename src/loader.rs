@@ -27,7 +27,8 @@ impl std::fmt::Display for LoaderError {
     }
 }
 
-/// Reads a text file of one 6-bit ALU control word per line.
+/// Reads a text file of one control word per line: **6** or **8** binary digits per line
+/// (see [`AluInstruction::from_str`](crate::alu::AluInstruction)).
 /// Blank lines (including a trailing empty line after the last instruction) are skipped.
 pub fn load_program(path: impl AsRef<Path>) -> Result<Vec<AluInstruction>, LoaderError> {
     let contents = std::fs::read_to_string(path.as_ref())?;

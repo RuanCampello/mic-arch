@@ -40,8 +40,30 @@ impl<W: Write> Logger<W> {
         writeln!(self.writer, "b = {:032b}", log.used_inputs.b)?;
         writeln!(self.writer, "a = {:032b}", log.used_inputs.a)?;
         writeln!(self.writer, "s = {:032b}", log.result.s)?;
+        writeln!(self.writer, "sd = {:032b}", log.result.sd)?;
+        writeln!(self.writer, "n = {}", if log.result.n { 1 } else { 0 })?;
+        writeln!(self.writer, "z = {}", if log.result.z { 1 } else { 0 })?;
         writeln!(self.writer, "co = {}", if log.result.carry { 1 } else { 0 })?;
 
+        Ok(())
+    }
+
+    /// Ciclo com `SLL8` e `SRA1` simultâneos: cabeçalho até `IR`, depois erro.
+    pub fn log_cycle_invalid_signals(&mut self, cycle: usize, log: &ExecutionLog) -> Result<()> {
+        writeln!(
+            self.writer,
+            "============================================================"
+        )?;
+        writeln!(self.writer, "Cycle {}", cycle)?;
+        writeln!(self.writer)?;
+        writeln!(self.writer, "PC = {}", log.pc)?;
+        writeln!(self.writer, "IR = {}", log.ir)?;
+        self.log_invalid()
+    }
+
+    /// Mensagem de erro para combinação inválida de sinais de deslocamento (`SLL8` e `SRA1`).
+    pub fn log_invalid(&mut self) -> Result<()> {
+        writeln!(self.writer, "> Error, invalid control signals.")?;
         Ok(())
     }
 
