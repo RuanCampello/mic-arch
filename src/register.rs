@@ -35,6 +35,49 @@ pub enum RegisterParseError {
 }
 
 impl Registers {
+    #[inline]
+    pub fn load(path: impl AsRef<Path>) -> Result<Registers, RegisterParseError> {
+        let contents = std::fs::read_to_string(path.as_ref())?;
+        let mut registers = Registers::default();
+
+        for (idx, line) in contents.lines().enumerate() {
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+
+            let (name, value) = line
+                .split_once('=')
+                .map(|(n, v)| (n.trim(), v.trim()))
+                .ok_or(RegisterParseError::InvalidLine { line: idx + 1 })?;
+
+            let parse_u32 = |s: &str| {
+                u32::from_str_radix(s, 2)
+                    .map_err(|_| RegisterParseError::InvalidLine { line: idx + 1 })
+            };
+
+            match name {
+                "mar" => registers.mar = parse_u32(value)?,
+                "mdr" => registers.mdr = parse_u32(value)?,
+                "pc" => registers.pc = parse_u32(value)?,
+                "sp" => registers.sp = parse_u32(value)?,
+                "lv" => registers.lv = parse_u32(value)?,
+                "cpp" => registers.cpp = parse_u32(value)?,
+                "tos" => registers.tos = parse_u32(value)?,
+                "opc" => registers.opc = parse_u32(value)?,
+                "h" => registers.h = parse_u32(value)?,
+                "mbr" => {
+                    registers.mbr = u8::from_str_radix(value, 2)
+                        .map_err(|_| RegisterParseError::InvalidLine { line: idx + 1 })?
+                }
+                _ => return Err(RegisterParseError::InvalidLine { line: idx + 1 }),
+            }
+        }
+
+        Ok(registers)
+    }
+
+    #[inline(always)]
     pub fn b_bus_decode(&self, selector: u8) -> u32 {
         match selector {
             0 => self.mdr,
@@ -50,6 +93,7 @@ impl Registers {
         }
     }
 
+    #[inline(always)]
     pub fn b_bus_name<'s>(selector: u8) -> &'s str {
         match selector {
             0 => "mdr",
