@@ -72,7 +72,7 @@ pub struct Inputs {
 }
 
 impl Alu {
-    pub fn execute(a: u32, b: u32, control: AluInstruction) -> (Inputs, AluResult) {
+    pub const fn execute(a: u32, b: u32, control: AluInstruction) -> (Inputs, AluResult) {
         // verify which inputs are enabled
         let mut a = if control.ena { a } else { 0 };
         let b = if control.enb { b } else { 0 };
@@ -132,16 +132,16 @@ impl Alu {
         let n = (sd >> 31) != 0;
         let z = sd == 0;
 
-        (
-            Inputs { a, b },
-            AluResult {
-                s: result,
-                sd,
-                carry,
-                n,
-                z,
-            },
-        )
+        let inputs = Inputs { a, b };
+        let result = AluResult {
+            s: result,
+            sd,
+            carry,
+            n,
+            z,
+        };
+
+        (inputs, result)
     }
 }
 
