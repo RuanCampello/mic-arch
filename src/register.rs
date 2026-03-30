@@ -126,3 +126,60 @@ impl From<std::io::Error> for RegisterParseError {
         Self::Io(e)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn selectors_map_correctly() {
+        let registers = Registers {
+            mar: 10,
+            mdr: 20,
+            pc: 30,
+            mbr: 0,
+            sp: 40,
+            lv: 50,
+            cpp: 60,
+            tos: 70,
+            opc: 80,
+            h: 90,
+        };
+
+        assert_eq!(registers.b_bus_decode(0), 20);
+        assert_eq!(registers.b_bus_decode(1), 30);
+        assert_eq!(registers.b_bus_decode(4), 40);
+        assert_eq!(registers.b_bus_decode(5), 50);
+        assert_eq!(registers.b_bus_decode(6), 60);
+        assert_eq!(registers.b_bus_decode(7), 70);
+        assert_eq!(registers.b_bus_decode(8), 80);
+    }
+
+    #[test]
+    fn load_registers_any_order() {
+        use std::env::temp_dir;
+        use std::fs::{remove_file, write};
+
+        let content = r#"
+            h = 00000000000000000000000000000001
+            mbr = 00000001
+            mar = 00000000000000000000000000000100
+            mdr = 00000000000000000000000000000000
+            pc = 00000000000000000000000000000000
+            sp = 00000000000000000000000000000100
+            lv = 00000000000000000000000000000000
+            cpp = 00000000000000000000000000000000
+            tos = 00000000000000000000000000000000
+            opc = 00000000000000000000000000000000
+        "#;
+
+        let path = temp_dir().join(format!("mic-arch-regs-ord-{}.txt", std::process::id()));
+        write(&path, content).unwrap();
+        let regs = Registers::load(&path).unwrap();
+        let _ = remove_file(&path);
+
+        assert_eq!(regs.h, 1);
+        assert_eq!(regs.mar, 4);
+        assert_eq!(regs.sp, 4);
+    }
+}
