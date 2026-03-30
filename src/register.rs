@@ -130,6 +130,8 @@ impl From<std::io::Error> for RegisterParseError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::env::temp_dir;
+    use std::fs::{remove_file, write};
 
     #[test]
     fn selectors_map_correctly() {
@@ -157,9 +159,6 @@ mod tests {
 
     #[test]
     fn load_registers_any_order() {
-        use std::env::temp_dir;
-        use std::fs::{remove_file, write};
-
         let content = r#"
             h = 00000000000000000000000000000001
             mbr = 00000001
@@ -181,5 +180,36 @@ mod tests {
         assert_eq!(regs.h, 1);
         assert_eq!(regs.mar, 4);
         assert_eq!(regs.sp, 4);
+    }
+
+    #[test]
+    fn load_registers_rejects_unknown_name() {
+        let content =
+            "mar = 00000000000000000000000000000000\nfoo = 00000000000000000000000000000001\n";
+        let path = temp_dir().join(format!("mic-arch-regs-bad-{}.txt", std::process::id()));
+
+        write(&path, content).unwrap();
+        let err = Registers::load(&path).unwrap_err();
+        let _ = remove_file(&path);
+
+        match err {
+            RegisterParseError::InvalidLine { line } => assert_eq!(line, 2),
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn load_registers_rejects_bad_binary() {
+        let content = "mar = 000000000000000000000000000000XY\n";
+        let path = temp_dir().join(format!("mic-arch-regs-bin-{}.txt", std::process::id()));
+
+        write(&path, content).unwrap();
+        let err = Registers::load(&path).unwrap_err();
+        let _ = remove_file(&path);
+
+        match err {
+            RegisterParseError::InvalidLine { line } => assert_eq!(line, 1),
+            _ => panic!(),
+        }
     }
 }
