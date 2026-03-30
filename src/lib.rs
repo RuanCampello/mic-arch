@@ -4,6 +4,7 @@ pub mod instruction_register;
 pub mod loader;
 pub mod logger;
 pub mod register;
+pub mod microinstruction;
 
 #[cfg(test)]
 #[allow(unused)]
