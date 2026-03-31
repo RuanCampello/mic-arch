@@ -14,7 +14,7 @@ use std::path::Path;
 /// | 7        | TOS    | direct             |
 /// | 8        | OPC    | direct             |
 ///
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Registers {
     pub mar: u32,
     pub mdr: u32,
