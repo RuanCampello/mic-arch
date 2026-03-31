@@ -4,7 +4,7 @@ use std::{path::Path, str::FromStr};
 #[derive(Debug)]
 pub enum LoaderError {
     Io(std::io::Error),
-    Line { line: usize, message: AluParseError },
+    Line { line: usize, message: String },
 }
 
 impl From<std::io::Error> for LoaderError {
@@ -40,13 +40,26 @@ pub fn load_program(path: impl AsRef<Path>) -> Result<Vec<AluInstruction>, Loade
             continue;
         }
 
-        let instr = AluInstruction::from_str(line).map_err(|message| LoaderError::Line {
+        let instr = AluInstruction::from_str(line).map_err(|e: AluParseError| LoaderError::Line {
             line: idx + 1,
-            message,
+            message: e.to_string(),
         })?;
         program.push(instr);
     }
 
+    Ok(program)
+}
+
+pub fn load_microprogram(path: impl AsRef<std::path::Path>) -> Result<Vec<crate::microinstruction::MicroInstruction>, LoaderError> {
+    let contents = std::fs::read_to_string(path.as_ref())?;
+    let mut program = Vec::new();
+    for (idx, raw_line) in contents.lines().enumerate() {
+        let line = raw_line.trim_end();
+        if line.is_empty() { continue; }
+        let instr = line.parse::<crate::microinstruction::MicroInstruction>()
+            .map_err(|e| LoaderError::Line { line: idx + 1, message: e.to_string() })?;
+        program.push(instr);
+    }
     Ok(program)
 }
 
