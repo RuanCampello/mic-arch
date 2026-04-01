@@ -41,7 +41,7 @@ impl MicroInstruction {
     /// 2. ALU   → `result = alu(h, b_bus)`
     /// 3. C-bus → escrita dos registradores destino
     /// 4. MEM=10 → `memory[mar_new] ← mdr`  (escrita, usa `mar` já atualizado)
-    pub fn execute_micro_cycle(&self, regs: &Registers, memory: &Memory) -> (Registers, Memory) {
+    pub fn execute(&self, regs: &Registers, memory: &Memory) -> (Registers, Memory) {
         let mut new_regs = regs.clone();
         let mut new_mem = memory.clone();
 

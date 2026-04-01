@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::microinstruction::MicroInstruction;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -16,6 +18,37 @@ impl Memory {
     pub fn write(&mut self, addr: u32, value: u32) {
         self.0[addr as usize] = value;
     }
+
+    pub fn load(path: impl AsRef<Path>) -> Result<Self, std::io::Error> {
+        use std::io::{Error, ErrorKind};
+
+        let contents = std::fs::read_to_string(path.as_ref())?;
+        let mut mem = [0u32; 16];
+        let mut count = 0;
+
+        for line in contents.lines() {
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+
+            if count >= 16 {
+                return Err(Error::new(ErrorKind::InvalidInput, "too many lines"));
+            }
+
+            if line.len() != 32 || !line.chars().all(|c| c == '0' || c == '1') {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    "non binary memory segment",
+                ));
+            }
+
+            mem[count] = u32::from_str_radix(line, 2).unwrap();
+            count += 1;
+        }
+
+        Ok(Self(mem))
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -24,6 +57,7 @@ pub enum MemoryOperation {
     None = 0b00,
     Read = 0b01,
     Write = 0b10,
+    ReadWrite = 0b11,
 }
 
 /// Registrador fonte do B-bus.

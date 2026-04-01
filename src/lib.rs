@@ -1,5 +1,6 @@
 pub mod alu;
 pub mod cpu;
+pub mod ijvm;
 pub mod instruction_register;
 pub mod loader;
 pub mod logger;
@@ -126,13 +127,13 @@ mod tests {
         mem.0[1] = 42;
 
         // Ciclo 1: lv = 0+3+1 = 4; mdr = memory[mar=1] = 42
-        let (r1, m1) = i1.execute_micro_cycle(&regs, &mem);
+        let (r1, m1) = i1.execute(&regs, &mem);
         assert_eq!(r1.lv, 4);
         assert_eq!(r1.mdr, 42);
         assert_eq!(m1, mem); // sem escrita neste ciclo
 
         // Ciclo 2: pc = 0+sp=5; memory[mar=1] = mdr=42 (mar não muda, c=pc)
-        let (r2, m2) = i2.execute_micro_cycle(&r1, &m1);
+        let (r2, m2) = i2.execute(&r1, &m1);
         assert_eq!(r2.pc, 5);
         assert_eq!(m2.0[1], 42);
 
