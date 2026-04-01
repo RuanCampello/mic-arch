@@ -3,6 +3,7 @@ pub mod cpu;
 pub mod instruction_register;
 pub mod loader;
 pub mod logger;
+pub mod memory;
 pub mod mic1;
 pub mod microinstruction;
 pub mod register;

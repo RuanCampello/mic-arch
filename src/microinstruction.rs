@@ -1,5 +1,6 @@
 // src/microinstruction.rs
 
+use crate::memory::{BBus, Memory, MemoryOperation};
 use crate::{alu::AluInstruction, register::Registers};
 use std::fmt;
 use std::str::FromStr;
@@ -9,7 +10,17 @@ use std::str::FromStr;
 pub struct MicroInstruction {
     pub alu: AluInstruction, // comando de 8 bits para a ALU
     pub c_sel: u16,          // máscara de bits de 9 bits para os registradores de destino (C-bus)
-    pub b_sel: u8,           // seletor de 4 bits para o registrador de origem (B-bus)
+    pub memory: MemoryOperation,
+    pub b_sel: u8, // seletor de 4 bits para o registrador de origem (B-bus)
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct MicroInstructionLog {
+    pub cycle: usize,
+    pub instruction: MicroInstruction,
+    pub regs_before: Registers,
+    pub regs_after: Registers,
+    pub memory: Memory,
 }
 
 /// Possíveis erros ao tentar converter uma string para MicroInstruction
@@ -17,6 +28,8 @@ pub struct MicroInstruction {
 pub enum MicroInstructionParseError {
     InvalidLength(usize),
     NonBinaryChar,
+    InvalidMemory(u8),
+    InvalidBBus(u8),
 }
 
 // implementação do display para o Erro (como a mensagem de erro será exibida)
@@ -36,6 +49,8 @@ impl fmt::Display for MicroInstructionParseError {
                     "A instrução contém caracteres que não são binários (apenas '0' e '1' permitidos)"
                 )
             }
+            Self::InvalidMemory(mem) => write!(f, "invalid memory value: {mem:#04b}"),
+            Self::InvalidBBus(bus) => write!(f, "invalid b_bus value: {bus}"),
         }
     }
 }
@@ -49,7 +64,7 @@ impl FromStr for MicroInstruction {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         // 1- verifica se a string tem exatamente 21 caracteres
-        if s.len() != 21 {
+        if s.len() != 23 {
             return Err(MicroInstructionParseError::InvalidLength(s.len()));
         }
 
@@ -69,10 +84,36 @@ impl FromStr for MicroInstruction {
         // o unwrap é seguro aqui pois já validamos que só existem '0's e '1's
         let c_sel = u16::from_str_radix(&s[8..17], 2).unwrap();
 
-        // pega os índices de 17 a 20 e converte da base 2 para um inteiro u8
-        let b_sel = u8::from_str_radix(&s[17..21], 2).unwrap();
+        let mem_bits = u8::from_str_radix(&s[17..19], 2).unwrap();
+        let b_bits = u8::from_str_radix(&s[19..23], 2).unwrap();
 
-        Ok(Self { alu, c_sel, b_sel })
+        let memory = match mem_bits {
+            0b00 => MemoryOperation::None,
+            0b01 => MemoryOperation::Read,
+            0b10 => MemoryOperation::Write,
+            v => return Err(MicroInstructionParseError::InvalidMemory(v)),
+        };
+
+        let b_bus = match b_bits {
+            0 => BBus::Mdr,
+            1 => BBus::Pc,
+            2 => BBus::Mbr,
+            3 => BBus::Mbru,
+            4 => BBus::Sp,
+            5 => BBus::Lv,
+            6 => BBus::Cpp,
+            7 => BBus::Tos,
+            8 => BBus::Opc,
+            9 => BBus::H,
+            v => return Err(MicroInstructionParseError::InvalidBBus(v)),
+        };
+
+        Ok(Self {
+            alu,
+            c_sel,
+            b_sel: b_bits,
+            memory,
+        })
     }
 }
 
@@ -82,7 +123,11 @@ impl fmt::Display for MicroInstruction {
         // Assume que `self.alu` imprime corretamente seus 8 bits.
         // {:09b} força o c_sel a ser impresso em binário com exatos 9 dígitos.
         // {:04b} força o b_sel a ser impresso em binário com exatos 4 dígitos.
-        write!(f, "{} {:09b} {:04b}", self.alu, self.c_sel, self.b_sel)
+        write!(
+            f,
+            "{} {:09b} {:02b} {:04b}",
+            self.alu, self.c_sel, self.memory as u8, self.b_sel
+        )
     }
 }
 
@@ -177,4 +222,3 @@ mod tests {
         );
     }
 }
-
