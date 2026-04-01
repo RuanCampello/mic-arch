@@ -1,6 +1,6 @@
 use crate::microinstruction::MicroInstruction;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// Memory of 16 words in 32-bits indexed by `mar`.
 pub struct Memory(pub [u32; 16]);
 
@@ -71,4 +71,3 @@ impl MicroInstruction {
             .collect()
     }
 }
-

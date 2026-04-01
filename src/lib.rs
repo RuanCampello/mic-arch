@@ -16,6 +16,9 @@ mod tests {
         cpu::{self, Cpu},
         loader::load_program,
         logger::Logger,
+        memory::Memory,
+        microinstruction::MicroInstruction,
+        register::Registers,
     };
     use std::{fs::File, io::BufWriter, path::Path, str::FromStr};
 
@@ -100,6 +103,38 @@ mod tests {
 
         let output = String::from_utf8(buf.into_inner())?;
         println!("{output}");
+
+        Ok(())
+    }
+
+    #[test]
+    fn etapa_3_output() -> Result<(), Box<dyn std::error::Error>> {
+        // Instr 1: 00110101 000010000 01 0101
+        //   ALU: ADD, ena=0, enb=1, inc=1 → 0 + lv + 1   c=lv   MEM=read
+        // Instr 2: 00110100 000000100 10 0100
+        //   ALU: ADD, ena=0, enb=1, inc=0 → 0 + sp        c=pc   MEM=write
+
+        let i1: MicroInstruction = "00110101000010000010101".parse()?;
+        let i2: MicroInstruction = "00110100000000100100100".parse()?;
+
+        // lv=3, sp=5, mar=1; memory[1]=42
+        let mut regs = Registers::default();
+        regs.lv = 3;
+        regs.sp = 5;
+        regs.mar = 1;
+        let mut mem = Memory::zero();
+        mem.0[1] = 42;
+
+        // Ciclo 1: lv = 0+3+1 = 4; mdr = memory[mar=1] = 42
+        let (r1, m1) = i1.execute_micro_cycle(&regs, &mem);
+        assert_eq!(r1.lv, 4);
+        assert_eq!(r1.mdr, 42);
+        assert_eq!(m1, mem); // sem escrita neste ciclo
+
+        // Ciclo 2: pc = 0+sp=5; memory[mar=1] = mdr=42 (mar não muda, c=pc)
+        let (r2, m2) = i2.execute_micro_cycle(&r1, &m1);
+        assert_eq!(r2.pc, 5);
+        assert_eq!(m2.0[1], 42);
 
         Ok(())
     }

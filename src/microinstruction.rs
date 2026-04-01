@@ -1,5 +1,6 @@
 // src/microinstruction.rs
 
+use crate::alu::Alu;
 use crate::memory::{BBus, Memory, MemoryOperation};
 use crate::{alu::AluInstruction, register::Registers};
 use std::fmt;
@@ -11,7 +12,7 @@ pub struct MicroInstruction {
     pub alu: AluInstruction, // comando de 8 bits para a ALU
     pub c_sel: u16,          // máscara de bits de 9 bits para os registradores de destino (C-bus)
     pub memory: MemoryOperation,
-    pub b_sel: u8, // seletor de 4 bits para o registrador de origem (B-bus)
+    pub b_sel: BBus, // seletor de 4 bits para o registrador de origem (B-bus)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -30,6 +31,80 @@ pub enum MicroInstructionParseError {
     NonBinaryChar,
     InvalidMemory(u8),
     InvalidBBus(u8),
+}
+
+impl MicroInstruction {
+    /// Executa um único ciclo de microinstrução.
+    ///
+    /// Ordem de operações dentro do ciclo:
+    /// 1. MEM=01 → `mdr ← memory[mar]`  (leitura, antes do C-bus)
+    /// 2. ALU   → `result = alu(h, b_bus)`
+    /// 3. C-bus → escrita dos registradores destino
+    /// 4. MEM=10 → `memory[mar_new] ← mdr`  (escrita, usa `mar` já atualizado)
+    pub fn execute_micro_cycle(&self, regs: &Registers, memory: &Memory) -> (Registers, Memory) {
+        let mut new_regs = regs.clone();
+        let mut new_mem = memory.clone();
+
+        // 1. leitura de memória (antes do c-bus)
+        if self.memory == MemoryOperation::Read {
+            new_regs.mdr = memory.read(regs.mar);
+        }
+
+        // 2. B-bus
+        let b_val: u32 = match self.b_sel {
+            BBus::Mdr => regs.mdr,
+            BBus::Pc => regs.pc,
+            BBus::Mbr => (regs.mbr as i8) as u32, // sign-extend
+            BBus::Mbru => regs.mbr as u32,        // zero-extend
+            BBus::Sp => regs.sp,
+            BBus::Lv => regs.lv,
+            BBus::Cpp => regs.cpp,
+            BBus::Tos => regs.tos,
+            BBus::Opc => regs.opc,
+            BBus::H => regs.h,
+        };
+
+        // 3. ALU: a = h, b = b_val
+        let (_, alu_result) = Alu::execute(regs.h, b_val, self.alu);
+        let result = alu_result.s;
+
+        // 4. C-bus writes
+        // bits MSB→LSB: h(8) opc(7) tos(6) cpp(5) lv(4) sp(3) pc(2) mdr(1) mar(0)
+        if self.c_sel & (1 << 8) != 0 {
+            new_regs.h = result;
+        }
+        if self.c_sel & (1 << 7) != 0 {
+            new_regs.opc = result;
+        }
+        if self.c_sel & (1 << 6) != 0 {
+            new_regs.tos = result;
+        }
+        if self.c_sel & (1 << 5) != 0 {
+            new_regs.cpp = result;
+        }
+        if self.c_sel & (1 << 4) != 0 {
+            new_regs.lv = result;
+        }
+        if self.c_sel & (1 << 3) != 0 {
+            new_regs.sp = result;
+        }
+        if self.c_sel & (1 << 2) != 0 {
+            new_regs.pc = result;
+        }
+        if self.c_sel & (1 << 1) != 0 {
+            new_regs.mdr = result;
+        }
+        if self.c_sel & (1 << 0) != 0 {
+            new_regs.mar = result;
+        }
+
+        // 5. escrita de memória (usa mar atualizado)
+        if self.memory == MemoryOperation::Write {
+            new_mem.write(new_regs.mar, new_regs.mdr);
+        }
+
+        (new_regs, new_mem)
+    }
 }
 
 // implementação do display para o Erro (como a mensagem de erro será exibida)
@@ -111,7 +186,7 @@ impl FromStr for MicroInstruction {
         Ok(Self {
             alu,
             c_sel,
-            b_sel: b_bits,
+            b_sel: b_bus,
             memory,
         })
     }
@@ -126,7 +201,7 @@ impl fmt::Display for MicroInstruction {
         write!(
             f,
             "{} {:09b} {:02b} {:04b}",
-            self.alu, self.c_sel, self.memory as u8, self.b_sel
+            self.alu, self.c_sel, self.memory as u8, self.b_sel as u8
         )
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
     alu::Alu,
-    microinstruction::{c_bus_names, c_bus_write, MicroInstruction},
+    microinstruction::{MicroInstruction, c_bus_names, c_bus_write},
     register::Registers,
 };
 
@@ -18,8 +18,8 @@ impl Mic1 {
         instr: &MicroInstruction,
     ) -> (&'static str, Vec<&'static str>, Registers, Registers) {
         let before = self.regs.clone();
-        let b_name = Registers::b_bus_name(instr.b_sel);
-        let b = self.regs.b_bus_decode(instr.b_sel);
+        let b_name = Registers::b_bus_name(instr.b_sel as u8);
+        let b = self.regs.b_bus_decode(instr.b_sel as u8);
         let a = self.regs.h;
         let (_, alu_result) = Alu::execute(a, b, instr.alu);
         let c_names = c_bus_names(instr.c_sel);
