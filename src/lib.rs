@@ -15,6 +15,7 @@ mod tests {
     use crate::{
         alu::AluInstruction,
         cpu::{self, Cpu},
+        ijvm::{ExecuteError, execute},
         loader::load_program,
         logger::Logger,
         memory::Memory,
@@ -136,6 +137,19 @@ mod tests {
         let (r2, m2) = i2.execute(&r1, &m1);
         assert_eq!(r2.pc, 5);
         assert_eq!(m2.0[1], 42);
+
+        Ok(())
+    }
+
+    #[test]
+    fn entregavel() -> Result<(), ExecuteError> {
+        let out = File::create("saida_entregavel.txt")?;
+        execute(
+            "./tests/data/instruções.txt",
+            "./tests/data/registradores_etapa3_tarefa1.txt",
+            "./tests/data/dados_etapa3_tarefa1.txt",
+            out,
+        )?;
 
         Ok(())
     }

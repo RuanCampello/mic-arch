@@ -51,7 +51,7 @@ impl IjvmInstruction {
     }
 }
 
-fn execute<W: Write>(
+pub fn execute<W: Write>(
     instructions: impl AsRef<Path>,
     registers: impl AsRef<Path>,
     memory: impl AsRef<Path>,
