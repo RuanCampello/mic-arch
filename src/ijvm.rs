@@ -64,6 +64,9 @@ fn execute<W: Write>(
     let mut logger = Logger::new(writer);
     let mut cycle = 0;
 
+    logger.log_ijvm_initial_state(&mem, &regs)?;
+    logger.log_ijvm_start()?;
+
     for instruction in ijvm {
         let micro_instructions = translate(instruction);
 
@@ -81,13 +84,16 @@ fn execute<W: Write>(
                 _ => c_bus_names(micro.c_sel),
             };
 
-            // TODO: logging
+            logger.log_ijvm_cycle(cycle, &micro, b_name, &c_names, &before, &after)?;
 
             regs = after;
             mem = new_memory;
             cycle += 1;
         }
+
+        logger.log_memory_after_instruction(&mem)?;
     }
+    logger.log_ijvm_eop(cycle)?;
 
     Ok(())
 }

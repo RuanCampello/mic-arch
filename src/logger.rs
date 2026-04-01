@@ -1,6 +1,6 @@
-use crate::cpu::ExecutionLog;
 use crate::microinstruction::MicroInstruction;
 use crate::register::Registers;
+use crate::{cpu::ExecutionLog, memory::Memory};
 use std::io::{Result, Write};
 
 /// Logger responsável por escrever a execução do programa em qualquer saída
@@ -87,7 +87,10 @@ impl<W: Write> Logger<W> {
         before: &Registers,
         after: &Registers,
     ) -> std::io::Result<()> {
-        writeln!(self.writer, "============================================================")?;
+        writeln!(
+            self.writer,
+            "============================================================"
+        )?;
         writeln!(self.writer, "Cycle {cycle}")?;
         writeln!(self.writer)?;
         writeln!(self.writer, "IR = {instr}")?;
@@ -108,7 +111,10 @@ impl<W: Write> Logger<W> {
     }
 
     pub fn log_mic1_eop(&mut self, cycle: usize) -> std::io::Result<()> {
-        writeln!(self.writer, "============================================================")?;
+        writeln!(
+            self.writer,
+            "============================================================"
+        )?;
         writeln!(self.writer, "Cycle {cycle}")?;
         writeln!(self.writer)?;
         writeln!(self.writer, "> End of Program.")?;
@@ -144,6 +150,101 @@ impl<W: Write> Logger<W> {
         writeln!(self.writer)?;
 
         self.writer.flush()?;
+
+        Ok(())
+    }
+
+    pub fn log_ijvm_cycle(
+        &mut self,
+        cycle: usize,
+        instr: &MicroInstruction,
+        b_name: &str,
+        c_names: &[&str],
+        before: &Registers,
+        after: &Registers,
+    ) -> Result<()> {
+        writeln!(self.writer, "Cycle {cycle}")?;
+        writeln!(self.writer, "ir = {instr}")?;
+        writeln!(self.writer)?;
+        writeln!(self.writer, "b = {b_name}")?;
+
+        match c_names.is_empty() {
+            true => writeln!(self.writer, "c = (none)")?,
+            _ => writeln!(self.writer, "c = {}", c_names.join(", "))?,
+        };
+
+        writeln!(self.writer)?;
+        writeln!(self.writer, "> Registers before instruction")?;
+        writeln!(self.writer, "*******************************")?;
+        self.write_registers(before)?;
+
+        writeln!(self.writer)?;
+        writeln!(self.writer, "> Registers after instruction")?;
+        writeln!(self.writer, "*******************************")?;
+        self.write_registers(after)?;
+
+        Ok(())
+    }
+
+    pub fn log_memory_after_instruction(&mut self, mem: &Memory) -> Result<()> {
+        writeln!(self.writer)?;
+        writeln!(self.writer, "> Memory after instruction")?;
+        writeln!(self.writer, "*******************************")?;
+
+        self.write_memory(mem)?;
+
+        writeln!(
+            self.writer,
+            "============================================================"
+        )?;
+        Ok(())
+    }
+
+    pub fn log_ijvm_eop(&mut self, cycle: usize) -> Result<()> {
+        writeln!(self.writer, "Cycle {cycle}")?;
+        writeln!(self.writer, "No more lines, EOP.")?;
+        self.writer.flush()?;
+        Ok(())
+    }
+
+    pub fn log_ijvm_start(&mut self) -> Result<()> {
+        writeln!(self.writer, "Start of Program")?;
+        writeln!(
+            self.writer,
+            "============================================================"
+        )?;
+        Ok(())
+    }
+
+    pub fn log_ijvm_initial_state(&mut self, mem: &Memory, regs: &Registers) -> Result<()> {
+        writeln!(
+            self.writer,
+            "============================================================"
+        )?;
+        writeln!(self.writer, "Initial memory state")?;
+        writeln!(self.writer, "*******************************")?;
+        self.write_memory(&mem)?;
+        writeln!(self.writer, "*******************************")?;
+        writeln!(self.writer, "Initial register state")?;
+        writeln!(self.writer, "*******************************")?;
+        self.write_registers(regs)?;
+        writeln!(
+            self.writer,
+            "============================================================"
+        )?;
+        Ok(())
+    }
+
+    pub fn write_memory(&mut self, mem: &Memory) -> Result<()> {
+        let lines = mem
+            .0
+            .iter()
+            .map(|v| format!("{:32b}", v))
+            .collect::<Vec<_>>();
+
+        for line in lines {
+            writeln!(self.writer, "{line}")?;
+        }
 
         Ok(())
     }
