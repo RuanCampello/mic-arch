@@ -1,4 +1,4 @@
-use crate::alu::{AluInstruction, AluParseError};
+use crate::alu::AluInstruction;
 use std::{path::Path, str::FromStr};
 
 #[derive(Debug)]
@@ -32,35 +32,17 @@ impl std::fmt::Display for LoaderError {
 /// Blank lines (including a trailing empty line after the last instruction) are skipped.
 pub fn load_program(path: impl AsRef<Path>) -> Result<Vec<AluInstruction>, LoaderError> {
     let contents = std::fs::read_to_string(path.as_ref())?;
-    let mut program = Vec::new();
-
-    for (idx, raw_line) in contents.lines().enumerate() {
-        let line = raw_line.trim_end();
-        if line.is_empty() {
-            continue;
-        }
-
-        let instr = AluInstruction::from_str(line).map_err(|e: AluParseError| LoaderError::Line {
-            line: idx + 1,
-            message: e.to_string(),
-        })?;
-        program.push(instr);
-    }
-
-    Ok(program)
-}
-
-pub fn load_microprogram(path: impl AsRef<std::path::Path>) -> Result<Vec<crate::microinstruction::MicroInstruction>, LoaderError> {
-    let contents = std::fs::read_to_string(path.as_ref())?;
-    let mut program = Vec::new();
-    for (idx, raw_line) in contents.lines().enumerate() {
-        let line = raw_line.trim_end();
-        if line.is_empty() { continue; }
-        let instr = line.parse::<crate::microinstruction::MicroInstruction>()
-            .map_err(|e| LoaderError::Line { line: idx + 1, message: e.to_string() })?;
-        program.push(instr);
-    }
-    Ok(program)
+    contents
+        .lines()
+        .enumerate()
+        .filter(|(_, line)| !line.trim().is_empty())
+        .map(|(idx, line)| {
+            AluInstruction::from_str(line.trim_end()).map_err(|msg| LoaderError::Line {
+                line: idx + 1,
+                message: msg.to_string(),
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]

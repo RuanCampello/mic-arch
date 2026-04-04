@@ -1,12 +1,8 @@
-use crate::{
-    alu::{Alu, AluInstruction, AluResult, Inputs},
-    instruction_register::{InstructionRegister, ProgramCounter},
-};
+use crate::alu::{Alu, AluInstruction, AluResult, Inputs};
 
 /// The CPU holds the state and orchestrates the execution of instructions.
 pub struct Cpu {
-    pc: ProgramCounter,
-    ir: InstructionRegister,
+    pc: usize,
 }
 
 /// The result of each executed program line.
@@ -35,24 +31,19 @@ impl ExecutionLog {
 
 impl Cpu {
     pub fn new() -> Self {
-        Cpu {
-            pc: ProgramCounter::new(),
-            ir: InstructionRegister::new(),
-        }
+        Cpu { pc: 1 }
     }
 
     #[inline]
     /// Executes one instruction cycle.
     /// Returns the execution log for output handling.
     pub fn execute_cycle(&mut self, a: u32, b: u32, instruction: AluInstruction) -> ExecutionLog {
-        self.ir.load(instruction);
-
         // we need to get the current pc BEFORE the incrementing
-        let pc = self.pc.get();
-        let (used_inputs, result) = Alu::execute(a, b, instruction);
+        let pc = self.pc;
 
         // increments the pc for the next instruction :D
-        self.pc.increment();
+        self.pc += 1;
+        let (used_inputs, result) = Alu::execute(a, b, instruction);
 
         ExecutionLog {
             ir: instruction,

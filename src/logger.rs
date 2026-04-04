@@ -9,10 +9,6 @@ pub struct Logger<W: Write> {
     writer: W,
 }
 
-#[derive(Debug, PartialEq)]
-/// Each
-pub struct Cycle {}
-
 impl<W: Write> Logger<W> {
     /// Cria um novo logger usando o writer fornecido.
     pub fn new(writer: W) -> Self {
@@ -66,60 +62,6 @@ impl<W: Write> Logger<W> {
     /// Mensagem de erro para combinação inválida de sinais de deslocamento (`SLL8` e `SRA1`).
     pub fn log_invalid(&mut self) -> Result<()> {
         writeln!(self.writer, "> Error, invalid control signals.")?;
-        Ok(())
-    }
-
-    pub fn log_mic1_start(&mut self, regs: &Registers) -> std::io::Result<()> {
-        writeln!(self.writer, "Start of Mic-1 Program")?;
-        writeln!(self.writer)?;
-        writeln!(self.writer, "Initial Registers:")?;
-        self.write_registers(regs)?;
-        writeln!(self.writer)?;
-        Ok(())
-    }
-
-    pub fn log_mic1_cycle(
-        &mut self,
-        cycle: usize,
-        instr: &MicroInstruction,
-        b_name: &str,
-        c_names: &[&str],
-        before: &Registers,
-        after: &Registers,
-    ) -> std::io::Result<()> {
-        writeln!(
-            self.writer,
-            "============================================================"
-        )?;
-        writeln!(self.writer, "Cycle {cycle}")?;
-        writeln!(self.writer)?;
-        writeln!(self.writer, "IR = {instr}")?;
-        writeln!(self.writer)?;
-        writeln!(self.writer, "B-bus: {b_name}")?;
-        if c_names.is_empty() {
-            writeln!(self.writer, "C-bus: (none)")?;
-        } else {
-            writeln!(self.writer, "C-bus: {}", c_names.join(", "))?;
-        }
-        writeln!(self.writer)?;
-        writeln!(self.writer, "Registers (before):")?;
-        self.write_registers(before)?;
-        writeln!(self.writer)?;
-        writeln!(self.writer, "Registers (after):")?;
-        self.write_registers(after)?;
-        Ok(())
-    }
-
-    pub fn log_mic1_eop(&mut self, cycle: usize) -> std::io::Result<()> {
-        writeln!(
-            self.writer,
-            "============================================================"
-        )?;
-        writeln!(self.writer, "Cycle {cycle}")?;
-        writeln!(self.writer)?;
-        writeln!(self.writer, "> End of Program.")?;
-        writeln!(self.writer)?;
-        self.writer.flush()?;
         Ok(())
     }
 
@@ -239,7 +181,7 @@ impl<W: Write> Logger<W> {
         let lines = mem
             .0
             .iter()
-            .map(|v| format!("{:32b}", v))
+            .map(|v| format!("{:032b}", v))
             .collect::<Vec<_>>();
 
         for line in lines {

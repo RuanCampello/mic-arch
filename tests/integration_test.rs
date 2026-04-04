@@ -124,43 +124,6 @@ fn test_etapa2_logger_output_matches_execution() -> Result<(), Box<dyn std::erro
 }
 
 #[test]
-fn test_etapa2_tarefa2_mic1_execution() -> Result<(), Box<dyn std::error::Error>> {
-    use mic_arch::{loader::load_microprogram, mic1::Mic1, register::Registers};
-    use std::path::Path;
-
-    let regs = Registers::load("./tests/data/registradores_etapa2_tarefa2.txt")?;
-    let program = load_microprogram("./tests/data/programa_etapa2_tarefa2.txt")?;
-
-    let mut mic1 = Mic1::new(regs);
-    let mut buf = Cursor::new(Vec::<u8>::new());
-    let mut logger = Logger::new(&mut buf);
-
-    logger.log_mic1_start(&mic1.regs.clone())?;
-
-    for (idx, instr) in program.iter().enumerate() {
-        let (b_name, c_names, before, after) = mic1.step(instr);
-        logger.log_mic1_cycle(idx + 1, instr, b_name, &c_names, &before, &after)?;
-    }
-    logger.log_mic1_eop(program.len() + 1)?;
-
-    let output = String::from_utf8(buf.into_inner())?.replace("\r\n", "\n");
-
-    assert!(output.contains("Start of Mic-1 Program"));
-    assert!(output.contains("End of Program"));
-    assert!(output.contains("B-bus:"));
-    assert!(output.contains("Registers (before):"));
-    assert!(output.contains("Registers (after):"));
-
-    let golden_path = Path::new("./tests/data/saída_etapa2_tarefa2.txt");
-    if golden_path.exists() {
-        let expected = std::fs::read_to_string(golden_path)?.replace("\r\n", "\n");
-        assert_eq!(output, expected);
-    }
-
-    Ok(())
-}
-
-#[test]
 fn test_logger_invalid_cycle_format() -> Result<(), Box<dyn std::error::Error>> {
     use mic_arch::alu::{AluInstruction, AluResult, Inputs};
     use mic_arch::cpu::ExecutionLog;
