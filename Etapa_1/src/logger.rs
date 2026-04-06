@@ -52,8 +52,7 @@ impl<W: Write> Logger<W> {
         writeln!(self.writer, "Cycle {cycle}")?;
         writeln!(self.writer)?;
         writeln!(self.writer, "PC = {cycle}")?;
-        writeln!(self.writer, "> Line is empty, EOP.")?;
-        writeln!(self.writer)?;
+        write!(self.writer, "> Line is empty, EOP.")?;
 
         self.writer.flush()?;
         Ok(())
