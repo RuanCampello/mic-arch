@@ -1,0 +1,335 @@
+//! Arithmetic logic unit `mic-1` implementation.
+
+/// The arithmetic logic unit of `mic-1`.
+/// This performs arithmetic and logic (duh) operations on `A` and `B`
+/// according to the [control](self::AluInstruction) signals.
+///
+/// Although this keeps no state, we use for scope purposes.
+pub(crate) struct Alu;
+
+/// The `ALU` returns both the result and the carry (vai-um).
+#[derive(Debug)]
+pub(crate) struct AluResult {
+    pub s: u32,
+    pub carry: bool,
+}
+/// The `ALU` receives control instructions with the following 6-bit format:
+///
+/// | Bit | Signal | Description |
+/// |-----|--------|-------------|
+/// | 5   | F0     | selects ALU operation |
+/// | 4   | F1     | selects ALU operation |
+/// | 3   | ENA    | enables input `a`. if `0`, `a` is treated as `0`. |
+/// | 2   | ENB    | enables input `b`. if `0`, `b` is treated as `0`. |
+/// | 1   | INVA   | inverts input `a` before the ALU operation. |
+/// | 0   | INC    | forces carry-in = 1, effectively adding `+1` to the result. |
+///
+/// The `F0` and `F1` bits determine the core ALU operation:
+///
+/// | F0 | F1 | Operation |
+/// |----|----|-----------|
+/// | 0  | 0  | `A & B` (logic AND)  |
+/// | 0  | 1  | `A \| B` (logic OR) |
+/// | 1  | 0  | `!B` (logic NOT) |
+/// | 1  | 1  | `A + B` (arithmetic ADD) |
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct AluInstruction {
+    f0: bool,
+    f1: bool,
+    ena: bool,
+    enb: bool,
+    inva: bool,
+    inc: bool,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum AluParseError {
+    InvalidLength(usize),
+    NonBinaryChar,
+    IntParse(std::num::ParseIntError),
+}
+
+/// Respectively 'a' and 'b' used during ALU calculation.
+pub struct Inputs {
+    pub a: u32,
+    pub b: u32,
+}
+
+impl Alu {
+
+    pub fn execute(a: u32, b: u32, control: AluInstruction) -> (Inputs, AluResult) {
+        // verify which inputs are enabled
+        let mut a = if control.ena { a } else { 0 };
+        let b = if control.enb { b } else { 0 };
+
+        // verify if we need to invert A BEFORE the operation
+        if control.inva {
+            a = !a;
+        }
+
+        let mut carry = false;
+
+        // this follows the specification interpretation of bits for f0, f1.
+        let mut result = match (control.f0, control.f1) {
+            (false, false) => a & b,
+            (false, true) => a | b,
+            (true, false) => !b,
+            (true, true) => {
+                let (s, c) = a.overflowing_add(b);
+                carry = c;
+                s
+            }
+        };
+
+        // verify if we need to increment the result
+        // here we need to take a little care of inc because it can overflow too
+        // in that case, we also need to flip the carry
+        if control.inc {
+            let (s, c) = result.overflowing_add(1);
+            result = s;
+            carry |= c;
+        }
+
+        (Inputs { a, b }, AluResult { s: result, carry })
+    }
+}
+
+impl std::fmt::Display for AluInstruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let bit = |b: bool| if b { '1' } else { '0' };
+        write!(
+            f,
+            "{}{}{}{}{}{}",
+            bit(self.f0),
+            bit(self.f1),   
+            bit(self.ena),
+            bit(self.enb),
+            bit(self.inva),
+            bit(self.inc)
+        )
+    }
+}
+
+impl From<u8> for AluInstruction {
+    fn from(bits: u8) -> Self {
+        Self {
+            f0: bits & 0b100000  != 0,
+            f1: bits & 0b010000  != 0,
+            ena: bits & 0b001000 != 0,
+            enb: bits & 0b000100 != 0,
+            inva: bits & 0b000010 != 0,
+            inc: bits & 0b000001 != 0,
+        }
+    }
+}
+
+impl std::str::FromStr for AluInstruction {
+    type Err = AluParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Here validating binary input
+        let s = s.trim();
+        if s.len() != 6 {
+            return Err(AluParseError::InvalidLength(s.len()));
+        }
+        if !s.chars().all(|c| c == '0' || c == '1') {
+            return Err(AluParseError::NonBinaryChar);
+        }
+
+        // Converting:
+        // FROM: string of 6 bits
+        // TO: u8
+        let bits = u8::from_str_radix(s, 2)?;
+        Ok(Self::from(bits))
+    }
+}
+
+impl std::fmt::Display for AluParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidLength(length) => {
+                writeln!(f, "expected exactly 6 bits, but found: {length} >:(")
+            }
+            Self::NonBinaryChar => writeln!(f, "expected only binary digits :("),
+            Self::IntParse(parse) => writeln!(f, "{parse}"),
+        }
+    }
+}
+
+impl From<std::num::ParseIntError> for AluParseError {
+    fn from(value: std::num::ParseIntError) -> Self {
+        Self::IntParse(value)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn and_operation() {
+        let ctrl = AluInstruction {
+            f0: false,
+            f1: false,
+            ena: true,
+            enb: true,
+            inva: false,
+            inc: false,
+        };
+
+        let (_, res) = Alu::execute(0b1100, 0b1010, ctrl);
+        // A: 1100
+        // B: 1010
+        // &: 1000
+        assert_eq!(res.s, 0b1000);
+        assert!(!res.carry);
+    }
+
+    #[test]
+    fn or_operation() {
+        let ctrl = AluInstruction {
+            f0: false,
+            f1: true,
+            ena: true,
+            enb: true,
+            inva: false,
+            inc: false,
+        };
+
+        let (_, res) = Alu::execute(0b1100, 0b1010, ctrl);
+
+        // A: 1100
+        // B: 1010
+        // |: 1110
+        assert_eq!(res.s, 0b1110);
+    }
+    #[test]
+    fn not_b_operation() {
+        let ctrl = AluInstruction {
+            f0: true,
+            f1: false,
+            ena: false,
+            enb: true,
+            inva: false,
+            inc: false,
+        };
+
+        let (_, res) = Alu::execute(0, 0b00001111, ctrl);
+
+        // B: 00001111
+        // !B: 11110000
+        assert_eq!(res.s as u8, 0b11110000); // we need to make this a u8 cause of the left 1's :D
+    }
+    #[test]
+    fn invert_a() {
+        let ctrl = AluInstruction {
+            f0: false,
+            f1: false,
+            ena: true,
+            enb: true,
+            inva: true,
+            inc: false,
+        };
+
+        //  A: 0000
+        //  B: 1010
+        // !A: 1111 (we need to invert it first, again :D)
+        //  &: 1010
+        let (_, res) = Alu::execute(0b0000, 0b1010, ctrl);
+        assert_eq!(res.s, 0b1010);
+    }
+
+    #[test]
+    fn disable_a() {
+        let ctrl = AluInstruction {
+            f0: true,
+            f1: true,
+            ena: false,
+            enb: true,
+            inva: false,
+            inc: false,
+        };
+
+        let (_, res) = Alu::execute(34, 35, ctrl);
+        // we should get the b again because a turns 0, not 69
+        assert_eq!(res.s, 35);
+    }
+
+    #[test]
+    fn complete_sum() {
+        let ctrl = AluInstruction {
+            f0: true,
+            f1: true,
+            ena: true,
+            enb: true,
+            inva: false,
+            inc: false,
+        };
+
+        let (_, res) = Alu::execute(34, 35, ctrl);
+        // now we should get the sum as expected
+        assert_eq!(res.s, 69);
+    }
+
+    #[test]
+    fn sum_with_disable_a_and_b() {
+        let ctrl = AluInstruction {
+            f0: true,
+            f1: true,
+            ena: false,
+            enb: false,
+            inva: false,
+            inc: false,
+        };
+
+        let (_, res) = Alu::execute(34, 35, ctrl);
+        // as both operands are not enabled, we should get a zeroed result :/
+        assert_eq!(res.s, 0);
+    }
+
+    #[test]
+    fn from_str_parses_six_bits() {
+        let parsed: AluInstruction = "111110".parse().unwrap();
+        let expected = AluInstruction::from(0b111110);
+        assert_eq!(parsed, expected);
+    }
+
+    #[test]
+    fn from_str_round_trips_display() {
+        let ctrl = AluInstruction {
+            f0: true,
+            f1: false,
+            ena: true,
+            enb: true,
+            inva: false,
+            inc: false,
+        };
+        let s = ctrl.to_string();
+        let parsed: AluInstruction = s.parse().unwrap();
+        assert_eq!(parsed, ctrl);
+    }
+
+    #[test]
+    fn from_str_rejects_wrong_length() {
+        assert_eq!(
+            "11111".parse::<AluInstruction>().unwrap_err(),
+            AluParseError::InvalidLength(5)
+        );
+        assert_eq!(
+            "1111111".parse::<AluInstruction>().unwrap_err(),
+            AluParseError::InvalidLength(7)
+        );
+    }
+
+    #[test]
+    fn from_str_rejects_invalid_digits() {
+         assert_eq!(
+            "11111a".parse::<AluInstruction>().unwrap_err(),
+            AluParseError::NonBinaryChar
+        );
+        assert_eq!(
+            "1111.1".parse::<AluInstruction>().unwrap_err(),
+            AluParseError::NonBinaryChar
+        );
+    }
+}
